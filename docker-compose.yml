@@ -35,33 +35,32 @@ version: '3.4'
 # //////////////////////////////////////////////////////////////////
 
 services:
+    nginx:
+        image: nginx:alpine
+        restart: unless-stopped
+        ports:
+            - '8333:80'
+        volumes:
+            - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro # Nginx設定ファイルをマウント
+        depends_on:
+            - openwebui # openwebuiが起動してからnginxを起動
     openwebui:
-        image: ghcr.io/open-webui/open-webui:v0.6.5
+        image: ghcr.io/open-webui/open-webui:0.6.5
         restart: unless-stopped
         depends_on:
             - ollamadeepseek
-            - mcpo
-        ports:
-           - '8333:8080'
+        # ports:
+        #    - '8333:8080'
         volumes:
           - './open-webui:/app/backend/data'
         environment:
-            OLLAMA_BASE_URL: http://ollamadeepseek:11434 
-
-    # Run dockerFile of MCPO 
-    mcpo:
-      build:
-        context: mcpo
-        dockerfile: Dockerfile
-      ports:
-        - '8334:8000'
-      
-
+            - OLLAMA_BASE_URL=http://ollamadeepseek:11434 # ホストIPではなくサービス名を使用
+            - OLLAMA_HOST=http://ollamadeepseek:11434 # Ollamaホストも明示的に設定
+            #- HOST=0.0.0.0
     ollamadeepseek: 
         build:
             context: .
             dockerfile: Dockerfile
-        # user: root # only for Linux
         restart: unless-stopped
         ports:
            - '11434:11434'
@@ -71,9 +70,10 @@ services:
             OLLAMA_HOST: 0.0.0.0
             OLLAMA_PORT: 11434
             OLLAMA_MODELS: 
-            NVIDIA_VISIBLE_DEVICES: all
-            NVIDIA_DRIVER_CAPABILITIES: all,utility
-        runtime: nvidia
+            # CUDA_VISIBLE_DEVICES: 0, 1
+            # OLLAMA_MAX_LOADED_MODELS: 3
+            # OLLAMA_NUM_PARALLEL: 2
+        #  To use only CPU, Just  comment the following line or remove it
         deploy:
           resources:
             reservations:
@@ -81,4 +81,3 @@ services:
                 - driver: nvidia
                   count: all
                   capabilities: [gpu]
-        
